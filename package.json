@@ -4,25 +4,30 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc && tsc-alias",
+    "start": "node dist/server.js",
+    "worker": "tsx src/workers/audit.worker.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
+    "@clickhouse/client": "^1.18.5",
     "busboy": "^1.6.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "file-type": "^22.0.1"
+    "file-type": "^22.0.1",
+    "redis": "^5.12.1"
   },
   "devDependencies": {
     "@types/busboy": "^1.5.4",
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.1",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.8.17",
+    "tsx": "^4.22.3",
     "typescript": "^6.0.3"
   }
 }

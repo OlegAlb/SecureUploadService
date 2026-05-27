@@ -1,12 +1,7 @@
 import { Router } from "express";
 import Busboy from "busboy";
 
-import fs from "fs";
-import path from "path";
-
-import { generateSafeFileName } from "../services/file-name.service.js";
-
-import { validateMagicBytes } from "../services/file-validator.service.js";
+import { processUpload } from "../services/upload.service.js";
 
 const router = Router();
 
@@ -15,57 +10,42 @@ router.post("/", (req, res) => {
     headers: req.headers,
   });
 
-  let uploaded = false;
+  let fileFound = false;
 
-  busboy.on("file", async (_, fileStream) => {
+  busboy.on("file", async (_fieldName, fileStream, info) => {
+    fileFound = true;
+
     try {
-      const chunks: Buffer[] = [];
+      const result = await processUpload(fileStream, info, req.ip ?? "unknown");
 
-      let total = 0;
-
-      for await (const chunk of fileStream) {
-        chunks.push(chunk);
-
-        total += chunk.length;
-
-        if (total >= 4100) {
-          break;
-        }
+      if (!res.headersSent) {
+        res.status(201).json(result);
       }
-
-      const headerBuffer = Buffer.concat(chunks);
-
-      const detectedType = await validateMagicBytes(headerBuffer);
-
-      const fileName = generateSafeFileName();
-
-      const filePath = path.join(process.cwd(), "storage", "uploads", fileName);
-
-      const writeStream = fs.createWriteStream(filePath);
-
-      writeStream.write(headerBuffer);
-
-      fileStream.pipe(writeStream);
-
-      uploaded = true;
-
-      writeStream.on("finish", () => {
-        res.json({
-          fileId: fileName,
-          mime: detectedType.mime,
-        });
-      });
     } catch (error) {
-      res.status(400).json({
-        error: error instanceof Error ? error.message : "Upload failed",
-      });
+      console.error("Upload failed", error);
+
+      if (!res.headersSent) {
+        res.status(400).json({
+          error: error instanceof Error ? error.message : "Upload failed",
+        });
+      }
     }
   });
 
   busboy.on("finish", () => {
-    if (!uploaded) {
+    if (!fileFound && !res.headersSent) {
       res.status(400).json({
         error: "No file uploaded",
+      });
+    }
+  });
+
+  busboy.on("error", (error) => {
+    console.error("Busboy error", error);
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "Multipart parsing failed",
       });
     }
   });

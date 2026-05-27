@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+
+    env_file:
+      - .env
+
+    depends_on:
+      - redis
+      - clickhouse
+
+    volumes:
+      - ./storage:/app/storage
+
+  worker:
+    build: .
+
+    command: npm run worker
+
+    env_file:
+      - .env
+
+    depends_on:
+      - redis
+      - clickhouse
+
+  redis:
+    image: redis:7-alpine
+
+    ports:
+      - "6379:6379"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: password
+
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+volumes:
+  clickhouse_data:
